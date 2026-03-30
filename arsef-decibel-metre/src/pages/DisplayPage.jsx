@@ -77,8 +77,9 @@ export default function DisplayPage() {
   );
 }
 
-function PublicGaugeCard({ gauge, settings }) {
-  const [currentDb, setCurrentDb] = useState(0);
+const PublicGaugeCard = React.memo(({ gauge, settings }) => {
+  const liquidRef = useRef(null);
+  const valueTextRef = useRef(null);
   const syncTimeoutRef = useRef(null);
 
   const scale = (settings.gaugeScale || 100) / 100;
@@ -90,20 +91,36 @@ function PublicGaugeCard({ gauge, settings }) {
     const handleUpdate = (data) => {
         // data from listenGaugeUpdate is already the payload: { type, id, value }
         if (data && data.type === 'GAUGE_UPDATE' && data.id === gauge.id) {
-            setCurrentDb(data.value);
+            const val = data.value;
+            const min = settings.minDb || 40;
+            const max = settings.maxDb || 110;
+            const p = Math.min(Math.max(((val - min) / (max - min)) * 100, 0), 100);
+
+            // 1. Direct DOM update for liquid (60fps)
+            if (liquidRef.current) {
+                liquidRef.current.style.height = `${p}%`;
+                // Avoid sub-pixel bleeding at zero height
+                liquidRef.current.style.opacity = p > 0 ? '1' : '0.001';
+            }
+
+            // 2. Direct DOM update for text
+            if (valueTextRef.current) {
+                valueTextRef.current.textContent = Math.round(val) || "";
+            }
+
+            // 3. Sync Timeout to clear display if signal lost
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-            syncTimeoutRef.current = setTimeout(() => setCurrentDb(0), 1000);
+            syncTimeoutRef.current = setTimeout(() => {
+                if (liquidRef.current) {
+                    liquidRef.current.style.height = '0%';
+                    liquidRef.current.style.opacity = '0';
+                }
+                if (valueTextRef.current) valueTextRef.current.textContent = '';
+            }, 1000);
         }
     };
     return listenGaugeUpdate(handleUpdate);
-  }, [gauge.id]);
-
-  const getPercentage = () => {
-    const min = settings.minDb || 40;
-    const max = settings.maxDb || 110;
-    const p = ((currentDb - min) / (max - min)) * 100;
-    return Math.min(Math.max(p, 0), 100);
-  };
+  }, [gauge.id, settings.minDb, settings.maxDb]);
 
   const getIntensityColor = (val) => {
     const min = settings.minDb || 40;
@@ -129,10 +146,18 @@ function PublicGaugeCard({ gauge, settings }) {
             className={cn("w-full border-4 rounded-3xl relative overflow-hidden flex items-end shadow-2xl transition-all duration-500 bg-black/40", gauge.isActive ? "border-white/100 scale-[1.02]" : "border-white/60")}
             style={{ height: `${420 * scale}px` }}
         >
-            <div className="w-full transition-all duration-75 relative overflow-hidden rounded-b-xl" style={{ height: `${getPercentage()}%` }}>
-                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-green-500 via-yellow-400 to-red-500" style={{ height: `${420 * scale}px` }}>
-                    {gauge.isActive && <div className="absolute top-0 left-0 right-0 h-2 bg-white blur-[2px] z-10" />}
-                </div>
+            {/* Liquid Level - Simplified background-based gradient to fix all edge-bleed artifacts */}
+            <div 
+                ref={liquidRef}
+                className="w-full relative overflow-hidden rounded-b-xl" 
+                style={{ 
+                    height: '0%', 
+                    opacity: 0,
+                    background: `linear-gradient(to top, #22c55e, #facc15, #ef4444) bottom / 100% ${420 * scale}px no-repeat`
+                }}
+            >
+                {/* Cap line - simplified */}
+                {gauge.isActive && <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/50 z-10" />}
             </div>
 
             {/* Ticks */}
@@ -145,10 +170,10 @@ function PublicGaugeCard({ gauge, settings }) {
             {/* Current Value Overlay */}
             <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center pointer-events-none z-20">
                 <div 
+                    ref={valueTextRef}
                     className={cn("font-black tracking-tighter tabular-nums drop-shadow-lg transition-all", gauge.isActive ? "text-white scale-110" : "text-white/60")}
                     style={{ fontSize: `${2.5 * valueRatio * scale}rem`, lineHeight: 0.8 }}
                 >
-                    {Math.round(currentDb) || ""}
                 </div>
             </div>
         </div>
@@ -167,4 +192,4 @@ function PublicGaugeCard({ gauge, settings }) {
         )}
     </div>
   );
-}
+});
