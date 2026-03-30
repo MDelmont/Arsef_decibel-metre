@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGaugeStore } from '../store/useGaugeStore';
+import { emitGaugeUpdate } from '../lib/windowUtils';
 
 const MIN_GAUGE_DB = 40;
 const MAX_GAUGE_DB = 110;
@@ -141,6 +142,7 @@ export function useAudioProcessor() {
       const activeGauge = gauges.find(g => g.isActive && g.isEnabled);
       if (activeGauge) {
         useGaugeStore.getState().updateGaugeValue(activeGauge.id, dbSpl);
+        emitGaugeUpdate(activeGauge.id, dbSpl);
       }
     }
 

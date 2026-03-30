@@ -81,7 +81,7 @@ export default function AdminPage() {
 
   const handleAddGauge = (e) => {
     e.preventDefault();
-    const finalName = newGaugeName.trim() || `Jauge ${gauges.length + 1}`;
+    const finalName = newGaugeName.trim();
     const finalTime = parseInt(newGaugeTime) || 0;
     
     addGauge(finalName, finalTime);
@@ -213,7 +213,7 @@ export default function AdminPage() {
                     gauges.map((gauge) => (
                       <tr key={gauge.id} className="transition-colors hover:bg-muted/30">
                         <td className={cn("px-4 py-3 font-medium", !gauge.isEnabled && "opacity-50 line-through text-muted-foreground")}>
-                          {gauge.name}
+                          {gauge.name || `Jauge ${gauges.indexOf(gauge) + 1}`}
                         </td>
                         <td className={cn("px-4 py-3 text-center text-muted-foreground", !gauge.isEnabled && "opacity-50")}>
                           {gauge.recordTime > 0 ? `${gauge.recordTime}s` : '∞'}

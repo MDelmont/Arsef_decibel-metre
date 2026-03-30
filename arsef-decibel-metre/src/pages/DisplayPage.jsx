@@ -4,14 +4,22 @@ import { cn } from '@/lib/utils';
 import { Maximize, Minimize, Activity } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { isTauri } from '../lib/windowUtils';
+import { isTauri, listenGaugeUpdate } from '../lib/windowUtils';
 
 export default function DisplayPage() {
   const { gauges, setGauges, settings, setSettings } = useGaugeStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [liveValues, setLiveValues] = useState({});
 
   // Sync logic between tabs/windows
+  useEffect(() => {
+    const unlisten = listenGaugeUpdate(({ id, value }) => {
+      setLiveValues(prev => ({ ...prev, [id]: value }));
+    });
+    return unlisten;
+  }, []);
+
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'gauge-store') {
@@ -140,26 +148,23 @@ export default function DisplayPage() {
         </div>
       )}
 
-      <div className="z-10 w-full max-w-7xl flex flex-col items-center gap-12">
+      <div className="z-10 w-full max-w-[95vw] flex flex-col items-center gap-16">
+        {/* Title Header */}
         <div className="flex flex-col items-center gap-2">
-            <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase text-white/90">
-                Performance Audio
+            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white/90 drop-shadow-sm">
+                Compteur de Performance
             </h1>
             <div className="h-1 w-32 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
         </div>
 
-        <div className={cn(
-            "grid w-full gap-8",
-            enabledGauges.length <= 1 ? "grid-cols-1 max-w-xl" : 
-            enabledGauges.length === 2 ? "grid-cols-2" : 
-            "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-        )}>
+        {/* Gauges Row (Wrapping) */}
+        <div className="flex flex-wrap justify-center items-start gap-x-12 gap-y-16 w-full">
           {enabledGauges.map((gauge) => (
-            <PublicGaugeCard key={gauge.id} gauge={gauge} />
+            <PublicGaugeCard key={gauge.id} gauge={gauge} liveValue={liveValues[gauge.id]} />
           ))}
 
           {enabledGauges.length === 0 && (
-             <div className="col-span-full py-20 text-center">
+             <div className="w-full py-20 text-center">
                 <p className="text-muted-foreground text-xl">Aucune jauge active pour le moment...</p>
              </div>
           )}
@@ -169,67 +174,92 @@ export default function DisplayPage() {
   );
 }
 
-function PublicGaugeCard({ gauge }) {
-  // We use MIN/MAX constants for relative movement
+function PublicGaugeCard({ gauge, liveValue }) {
+  // Constants for db range
   const MIN_DB = 40;
   const MAX_DB = 110;
   
-  const percentage = ((gauge.currentValue - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+  // Only show live movement if the gauge is active
+  const currentVal = gauge.isActive ? (liveValue !== undefined ? liveValue : gauge.currentValue) : 0;
+  const percentage = ((currentVal - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
   const safePercentage = Math.min(100, Math.max(0, percentage));
+
+  // Determine color based on intensity for the Max DB text
+  const getIntensityColor = (val) => {
+    if (val < 60) return "text-green-400";
+    if (val < 85) return "text-yellow-400";
+    return "text-red-500";
+  };
   
   return (
     <div className={cn(
-        "relative rounded-3xl p-8 flex flex-col items-center gap-6 transition-all duration-500",
-        gauge.isActive 
-            ? "bg-white/10 border-2 border-primary/50 shadow-[0_0_40px_rgba(var(--primary),0.2)] scale-105" 
-            : "bg-white/5 border border-white/10 opacity-80"
+        "flex flex-col items-center gap-8 min-w-[200px] transition-all duration-500",
+        gauge.isActive ? "scale-110" : "opacity-70"
     )}>
-      {/* Active Indicator */}
-      {gauge.isActive && (
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full animate-pulse uppercase tracking-widest shadow-lg">
-            En direct
+      
+      {/* 1. TOP: Max DB Value */}
+      <div className="flex flex-col items-center gap-0">
+          <div className={cn(
+              "text-7xl font-black tabular-nums tracking-tighter transition-all duration-300 drop-shadow-md",
+              gauge.isActive ? getIntensityColor(currentVal) : "text-white"
+          )}>
+              {gauge.maxValue || 0}
           </div>
-      )}
+          <div className="text-sm font-bold uppercase tracking-widest text-muted-foreground/80">
+              Db max
+          </div>
+      </div>
 
-      <h2 className="text-2xl md:text-3xl font-bold text-center truncate w-full">
-          {gauge.name}
-      </h2>
+      {/* 2. MIDDLE: Vertical Gauge */}
+      <div className="relative flex items-center justify-center">
+          {/* Active Indicator Pulse */}
+          {gauge.isActive && (
+              <div className="absolute -inset-4 bg-primary/10 rounded-3xl blur-2xl animate-pulse -z-10" />
+          )}
 
-      <div className="flex items-end gap-6 w-full h-[400px]">
-          {/* Vertical Thermometer */}
-          <div className="w-24 flex-shrink-0 h-full bg-black/40 rounded-full border border-white/10 relative overflow-hidden flex items-end shadow-inner">
-             <div 
-                className="w-full transition-all duration-75 ease-out rounded-b-full bg-gradient-to-t from-green-500 via-yellow-400 to-red-500"
+          <div className={cn(
+              "w-28 h-[420px] rounded-2xl bg-black/40 border-2 overflow-hidden flex items-end shadow-2xl transition-all duration-500",
+              gauge.isActive ? "border-white/80 shadow-primary/10" : "border-white/60"
+          )}>
+              {/* Liquid Level */}
+              <div 
+                className={cn(
+                    "w-full transition-all duration-75 ease-out rounded-b-lg relative",
+                    currentVal > 0 ? "bg-gradient-to-t from-green-500 via-yellow-400 to-red-500" : "bg-transparent"
+                )}
                 style={{ height: `${safePercentage}%` }}
-             >
+              >
                 {/* Glow on top of liquid */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-white/40 blur-[2px]" />
-             </div>
-
-             {/* Ticks */}
-             <div className="absolute inset-0 flex flex-col justify-between py-8 px-4 pointer-events-none opacity-20">
-                {[...Array(11)].map((_, i) => (
-                    <div key={i} className="w-full h-[1px] bg-white" />
-                ))}
-             </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-end gap-8 h-full pb-4">
-              <div className="space-y-1">
-                  <div className="text-sm font-medium uppercase tracking-widest text-white/50">Current</div>
-                  <div className="text-5xl font-black tabular-nums tracking-tighter">
-                      {gauge.currentValue}<span className="text-xl text-white/30 ml-1">dB</span>
-                  </div>
+                {currentVal > 0 && <div className="absolute top-0 left-0 right-0 h-2 bg-white/80 blur-[2px]" />}
+                
+                {/* Internal Current Value Overlay (Small) */}
+                {gauge.isActive && currentVal > 0 && (
+                    <div className="absolute top-2 left-0 right-0 text-center font-bold text-xs text-white/100 mix-blend-overlay">
+                        {currentVal}
+                    </div>
+                )}
               </div>
 
-              <div className="space-y-1">
-                  <div className="text-sm font-medium uppercase tracking-widest text-primary/70">Peak Record</div>
-                  <div className="text-7xl font-black tabular-nums tracking-tighter text-primary shadow-primary/20 drop-shadow-lg">
-                      {gauge.maxValue}
-                  </div>
+              {/* Graduation Ticks (Side side) */}
+              <div className="absolute inset-0 flex flex-col justify-between py-10 px-2 pointer-events-none opacity-100">
+                {[...Array(11)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                        <div className={cn("w-3 h-[1.5px] ", gauge.isActive ? "bg-white" : "bg-white/60")} />
+                    </div>
+                ))}
               </div>
           </div>
       </div>
+
+      <div className="w-full flex-1 flex flex-col items-center pt-2">
+          <p className={cn(
+              "text-2xl md:text-3xl font-black text-center tracking-tight max-w-[220px] leading-[1.1] transition-all italic break-words",
+              gauge.isActive ? "text-white scale-105" : "text-white/80"
+          )}>
+              {gauge.name || ""}
+          </p>
+      </div>
+
     </div>
   );
 }
