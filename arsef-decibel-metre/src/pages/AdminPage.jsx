@@ -116,8 +116,8 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200 p-6">
       <header className="flex items-center justify-between pb-6 mb-6 border-b border-border">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{settings.pageTitle || "Administration - Arsef"}</h1>
-          <p className="text-muted-foreground">Gérez vos jauges et la captation audio.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Administration - Arsef</h1>
+          <p className="text-muted-foreground">Paramètres et gestion des jauges.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -218,78 +218,122 @@ export default function AdminPage() {
            </div>
         </div>
              <div className="space-y-4 lg:border-l lg:border-border lg:pl-8">
-           <div className="flex items-center justify-between border-b border-border pb-1">
-               <h2 className="text-xl font-semibold">Gestion du son</h2>
-               <div className={cn("w-3 h-3 rounded-full border border-border", isClipping ? "bg-red-500 shadow-[0_0_10px_red]" : "bg-muted")} />
+           {/* Section 1: Gestion Page Public */}
+           <div className="bg-muted/10 p-4 rounded-xl border border-border/40 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-border/50 pb-1">
+                  <h2 className="text-sm font-black uppercase tracking-widest text-primary/80">Page Public</h2>
+                  <Monitor className="h-4 w-4 text-muted-foreground/50" />
+              </div>
+
+              <div className="space-y-3">
+                  <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Titre de l'application</label>
+                      <Input 
+                          className="h-8 text-xs bg-background"
+                          placeholder="Ex: Compteur de Performance" 
+                          value={settings.pageTitle} 
+                          onChange={(e) => useGaugeStore.getState().setSettings({ ...settings, pageTitle: e.target.value })} 
+                      />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground flex justify-between">
+                            Taille Jauges <span>{settings.gaugeScale}%</span>
+                          </label>
+                          <Slider min={50} max={250} step={5} value={[settings.gaugeScale]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, gaugeScale: val[0] })} />
+                      </div>
+                      <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground flex justify-between">
+                            Taille Titre <span>{settings.titleSize}%</span>
+                          </label>
+                          <Slider min={50} max={250} step={5} value={[settings.titleSize]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, titleSize: val[0] })} />
+                      </div>
+                      <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground flex justify-between">
+                            Taille dB Max <span>{settings.maxDbSize}%</span>
+                          </label>
+                          <Slider min={50} max={300} step={5} value={[settings.maxDbSize]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, maxDbSize: val[0] })} />
+                      </div>
+                      <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground flex justify-between">
+                            Taille Valeurs <span>{settings.valueSize}%</span>
+                          </label>
+                          <Slider min={50} max={300} step={5} value={[settings.valueSize]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, valueSize: val[0] })} />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground flex justify-between">
+                            Taille Noms des jauges <span>{settings.nameSize}%</span>
+                          </label>
+                          <Slider min={50} max={200} step={5} value={[settings.nameSize]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, nameSize: val[0] })} />
+                      </div>
+                  </div>
+              </div>
            </div>
 
-           <div className="space-y-4">
-               <Button variant={isListening ? "destructive" : "default"} className="w-full font-bold h-10" onClick={() => isListening ? stopListening() : startListening()}>
-                   {isListening ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                   {isListening ? "Désactiver le micro" : "Activer le micro"}
-               </Button>
-               
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Microphone</label>
-                        <Select value={selectedMicId} onValueChange={(val) => startListening(val)}>
-                          <SelectTrigger className="h-9 truncate"><SelectValue placeholder="Choix du micro..." /></SelectTrigger>
-                          <SelectContent>
-                            {microphones.map((mic, idx) => (
-                              <SelectItem key={mic.deviceId || idx} value={mic.deviceId || idx.toString()}>{mic.label || `Micro ${idx + 1}`}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-nowrap">Titre de l'application</label>
-                        <Input 
-                            className="h-9"
-                            placeholder="Ex: Compteur" 
-                            value={settings.pageTitle} 
-                            onChange={(e) => useGaugeStore.getState().setSettings({ ...settings, pageTitle: e.target.value })} 
-                        />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">dB Min</label>
-                            <Input className="h-9" type="number" value={settings.minDb} onChange={(e) => useGaugeStore.getState().setSettings({ ...settings, minDb: parseInt(e.target.value) || 0 })} />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">dB Max</label>
-                            <Input className="h-9" type="number" value={settings.maxDb} onChange={(e) => useGaugeStore.getState().setSettings({ ...settings, maxDb: parseInt(e.target.value) || 0 })} />
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lissage (Fast/Slow)</label>
-                        <Slider min={0.1} max={1.5} step={0.1} value={[ballistic]} onValueChange={(val) => setBallistic(val[0])} className="pt-2" />
-                    </div>
-                  </div>
+           {/* Section 2: Gestion du son */}
+           <div className="space-y-3">
+               <div className="flex items-center justify-between border-b border-border pb-1">
+                   <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Captation Audio</h2>
+                   <div className={cn("w-3 h-3 rounded-full border border-border", isClipping ? "bg-red-500 shadow-[0_0_10px_red]" : "bg-muted")} />
                </div>
-               
-               <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
-                   <div className="flex justify-between items-center mb-1">
-                       <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Calibration (Boost)</label>
-                       <div className="px-1.5 py-0.5 bg-background border border-border rounded text-[10px] font-mono font-bold">{calibrationOffset > 0 ? '+' : ''}{calibrationOffset} dB</div>
+
+               <div className="space-y-3">
+                   <Button variant={isListening ? "destructive" : "default"} className="w-full font-bold h-9 text-xs" onClick={() => isListening ? stopListening() : startListening()}>
+                       {isListening ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                       {isListening ? "Désactiver le micro" : "Activer le micro"}
+                   </Button>
+                   
+                   <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Microphone</label>
+                            <Select value={selectedMicId} onValueChange={(val) => startListening(val)}>
+                              <SelectTrigger className="h-8 text-[11px] truncate"><SelectValue placeholder="Choix.." /></SelectTrigger>
+                              <SelectContent>
+                                {microphones.map((mic, idx) => (
+                                  <SelectItem key={mic.deviceId || idx} value={mic.deviceId || idx.toString()}>{mic.label || `Micro ${idx + 1}`}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lissage</label>
+                            <Slider min={0.1} max={1.5} step={0.1} value={[ballistic]} onValueChange={(val) => setBallistic(val[0])} className="pt-2" />
+                        </div>
                    </div>
-                    <Slider min={-50} max={150} step={1} value={[calibrationOffset]} onValueChange={(val) => setCalibrationOffset(val[0])} />
+
+                   <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">dB Min</label>
+                            <Input className="h-8 text-xs" type="number" value={settings.minDb} onChange={(e) => useGaugeStore.getState().setSettings({ ...settings, minDb: parseInt(e.target.value) || 0 })} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">dB Max</label>
+                            <Input className="h-8 text-xs" type="number" value={settings.maxDb} onChange={(e) => useGaugeStore.getState().setSettings({ ...settings, maxDb: parseInt(e.target.value) || 0 })} />
+                        </div>
+                   </div>
+                   
+                   <div className="bg-muted/30 p-2 rounded-lg border border-border/50">
+                       <div className="flex justify-between items-center mb-1">
+                           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Calibration</label>
+                           <div className="px-1.5 py-0.5 bg-background border border-border rounded text-[10px] font-mono font-bold tracking-tighter">
+                             {calibrationOffset > 0 ? '+' : ''}{calibrationOffset} dB
+                           </div>
+                       </div>
+                        <Slider min={-50} max={150} step={1} value={[calibrationOffset]} onValueChange={(val) => setCalibrationOffset(val[0])} />
+                    </div>
                 </div>
             </div>
 
-            <div className="flex gap-4 items-stretch pt-2 h-48">
-              <div className="flex flex-col flex-1 items-center justify-center p-4 bg-card border border-border rounded-xl shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                      <Activity className="h-10 w-10" />
+            {/* Section 3: Preview */}
+            <div className="flex gap-4 items-stretch pt-2 h-36">
+              <div className="flex flex-col flex-1 items-center justify-center p-3 bg-card border border-border rounded-xl shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-1.5 opacity-5 group-hover:opacity-10 transition-opacity">
+                      <Activity className="h-8 w-8" />
                   </div>
-                  <div className="text-[10px] uppercase text-muted-foreground font-black tracking-[0.2em] mb-1">Db Peak</div>
+                  <div className="text-[9px] uppercase text-muted-foreground font-black tracking-widest mb-0.5">Peak</div>
                   <div className={cn(
-                      "text-5xl font-black tabular-nums transition-colors duration-300 drop-shadow-sm",
+                      "text-4xl font-black tabular-nums transition-colors duration-300 drop-shadow-sm leading-none",
                       (() => {
                           const range = (settings.maxDb || 110) - (settings.minDb || 40);
                           const p = (displayMax - (settings.minDb || 40)) / range;
@@ -299,7 +343,7 @@ export default function AdminPage() {
                       })()
                   )}>{displayMax}</div>
                   <div className={cn(
-                      "text-xl font-bold mt-2 tabular-nums transition-colors flex items-center gap-2",
+                      "text-sm font-bold mt-1 tabular-nums transition-colors flex items-center gap-1.5 leading-none",
                       (() => {
                           const range = (settings.maxDb || 110) - (settings.minDb || 40);
                           const p = (currentDb - (settings.minDb || 40)) / range;
@@ -308,30 +352,30 @@ export default function AdminPage() {
                           return "text-red-500/80";
                       })()
                   )}>
-                    <span className="w-2 h-2 rounded-full animate-pulse bg-current" />
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-current" />
                     {currentDb} dB
                   </div>
               </div>
 
               <div className={cn(
-                  "h-48 w-24 bg-black/40 border-2 rounded-2xl relative overflow-hidden flex items-end shrink-0 transition-all duration-500",
-                  isListening ? "border-white/80 shadow-primary/10 scale-[1.02]" : "border-white/20"
+                  "h-36 w-16 bg-black/40 border-2 rounded-xl relative overflow-hidden flex items-end shrink-0 transition-all duration-500",
+                  isListening ? "border-white/80 shadow-primary/10" : "border-white/20"
               )}>
                   <div className="w-full transition-all duration-75 relative overflow-hidden" style={{ height: `${getGaugePercentage()}%` }}>
-                      <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-green-500 via-yellow-400 to-red-500">
+                      <div className="absolute bottom-0 left-0 w-full h-36 bg-gradient-to-t from-green-500 via-yellow-400 to-red-500">
                            {isListening && <div className="absolute top-0 left-0 right-0 h-1.5 bg-white blur-[1px] z-10" />}
                       </div>
                   </div>
-                  <div className="absolute inset-0 flex flex-col justify-between py-6 px-1.5 pointer-events-none opacity-40">
-                      {[...Array(9)].map((_, i) => (
-                          <div key={i} className="w-2 h-[1px] bg-white rounded-full" />
+                  <div className="absolute inset-0 flex flex-col justify-between py-4 px-1 pointer-events-none opacity-30">
+                      {[...Array(7)].map((_, i) => (
+                          <div key={i} className="w-full h-[1px] bg-white/50 rounded-full" />
                       ))}
                   </div>
               </div>
             </div>
             
             <div className="flex justify-end">
-                <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={resetLocalMaxDb}>Reset Max</Button>
+                <Button variant="outline" size="sm" className="h-6 text-[9px] uppercase font-bold px-3" onClick={resetLocalMaxDb}>Reset</Button>
             </div>
          </div>       </main>
     </div>

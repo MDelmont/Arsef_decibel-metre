@@ -14,7 +14,12 @@ export const useGaugeStore = create(
         publicFullscreen: false,
         minDb: 40,
         maxDb: 110,
-        pageTitle: ''
+        pageTitle: '',
+        gaugeScale: 100,
+        titleSize: 100,
+        maxDbSize: 100,
+        valueSize: 100,
+        nameSize: 100
       },
       
       // Actions
@@ -76,7 +81,8 @@ export const useGaugeStore = create(
       // We only want to persist certain fields ideally, but the whole array is fine for MVP.
       // We could use `partialize` to exclude currentValue.
       partialize: (state) => ({
-        gauges: state.gauges.map(g => ({ ...g, currentValue: 0 })) // Don't persist live mic data
+        gauges: state.gauges.map(g => ({ ...g, currentValue: 0 })), // Don't persist live mic data
+        settings: state.settings
       })
     }
   )

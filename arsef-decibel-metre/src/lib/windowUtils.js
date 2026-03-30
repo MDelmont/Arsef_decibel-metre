@@ -16,7 +16,7 @@ const broadcastChannel = typeof window !== 'undefined' ? new BroadcastChannel(GA
  * Uses BroadcastChannel for browsers and Tauri Events for desktop.
  */
 export async function emitGaugeUpdate(id, value) {
-  const payload = { id, value };
+  const payload = { type: 'GAUGE_UPDATE', id, value };
   
   // 1. Browser/BroadcastChannel
   if (broadcastChannel) {
