@@ -11,6 +11,18 @@ import { Monitor, Plus, Trash2, RotateCcw, Mic, MicOff, Settings, Activity, Moon
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Slider } from '../components/ui/slider';
 import { openDisplayWindow, toggleDisplayFullscreen, isTauri } from '../lib/windowUtils';
+import { Info } from 'lucide-react';
+
+const InfoTooltip = ({ text }) => (
+  <span className="group relative inline-block ml-1.5 cursor-help align-middle">
+    <Info className="h-4 w-4 text-muted-foreground/60 hover:text-primary transition-colors" />
+    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 w-56 bg-popover text-popover-foreground text-[11px] font-normal rounded-lg border border-border shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 leading-normal normal-case tracking-normal">
+      {text}
+      <span className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-border" />
+      <span className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-popover translate-y-[-1px]" />
+    </span>
+  </span>
+);
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -304,7 +316,7 @@ export default function AdminPage() {
 
                {/* Ballistique */}
                <div className="space-y-1.5">
-                   <label className="text-sm font-medium text-muted-foreground">Ballistique (Lissage de la jauge)</label>
+                   <label className="text-sm font-medium text-muted-foreground flex items-center">Ballistique (Lissage) <InfoTooltip text="Définit la vitesse de réaction. 'Rapide' capte les pics brefs (cris). 'Lent' lisse les variations pour une ambiance globale (foule)." /></label>
                    <Select value={ballistic.toString()} onValueChange={(val) => setBallistic(parseFloat(val))}>
                      <SelectTrigger>
                        <SelectValue placeholder="Sélection de la ballistique..." />
@@ -319,7 +331,7 @@ export default function AdminPage() {
                {/* Calibration */}
                <div className="space-y-3 pt-2">
                    <div className="flex justify-between items-center">
-                       <label className="text-sm font-medium text-muted-foreground">Calibration (Sensibilité)</label>
+                       <label className="text-sm font-medium text-muted-foreground flex items-center">Calibration (Sensibilité) <InfoTooltip text="Ajuste le niveau de référence. Sans décibelmètre, basez-vous sur l'écoute : une foule qui crie est environ à 100-105 dB. Si vous voyez 20 alors que ça hurle, boostez ce curseur jusqu'à 100." /></label>
                        <div className="px-2 py-1 bg-muted rounded-md text-xs font-mono border border-border">
                            {calibrationOffset > 0 ? '+' : ''}{calibrationOffset} dB
                        </div>
