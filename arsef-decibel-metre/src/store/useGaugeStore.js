@@ -19,7 +19,8 @@ export const useGaugeStore = create(
         titleSize: 100,
         maxDbSize: 100,
         valueSize: 100,
-        nameSize: 100
+        nameSize: 100,
+        gaugeGap: 4
       },
       
       // Actions

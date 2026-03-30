@@ -267,6 +267,12 @@ export default function AdminPage() {
                           </label>
                           <Slider min={50} max={200} step={5} value={[settings.nameSize]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, nameSize: val[0] })} />
                       </div>
+                      <div className="col-span-2 space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground flex justify-between">
+                            Espacement Jauges <span>{settings.gaugeGap}%</span>
+                          </label>
+                          <Slider min={0} max={100} step={0.5} value={[settings.gaugeGap]} onValueChange={(val) => useGaugeStore.getState().setSettings({ ...settings, gaugeGap: val[0] })} />
+                      </div>
                   </div>
               </div>
            </div>

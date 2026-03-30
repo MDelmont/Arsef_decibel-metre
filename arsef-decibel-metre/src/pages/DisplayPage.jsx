@@ -66,7 +66,13 @@ export default function DisplayPage() {
         </div>
 
         {/* Gauges Row */}
-        <div className="flex flex-wrap justify-center items-start gap-x-12 gap-y-16 w-full">
+        <div 
+          className="flex flex-wrap justify-center items-start w-full"
+          style={{ 
+            columnGap: `${settings.gaugeGap}vw`, 
+            rowGap: '4rem' 
+          }}
+        >
           {enabledGauges.map((gauge) => (
             <PublicGaugeCard key={gauge.id} gauge={gauge} settings={settings} />
           ))}
@@ -156,14 +162,21 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
                     background: `linear-gradient(to top, #22c55e, #facc15, #ef4444) bottom / 100% ${420 * scale}px no-repeat`
                 }}
             >
-                {/* Cap line - simplified */}
-                {gauge.isActive && <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/50 z-10" />}
+                {/* Cap line - dynamic thickness */}
+                {gauge.isActive && <div className="absolute top-0 left-0 right-0 z-10 bg-white/50" style={{ height: `${Math.max(1, 2 * scale)}px` }} />}
             </div>
 
-            {/* Ticks */}
-            <div className="absolute inset-0 flex flex-col justify-between py-10 px-4 pointer-events-none opacity-30">
+            {/* Ticks - Dynamic scaling */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30" style={{ padding: `${40 * scale}px ${16 * scale}px` }}>
                 {[...Array(11)].map((_, i) => (
-                    <div key={i} className="w-6 h-[2px] bg-white rounded-full" />
+                    <div 
+                        key={i} 
+                        className="bg-white rounded-full transition-all duration-500" 
+                        style={{ 
+                            width: `${(i % 5 === 0 ? 32 : 20) * scale}px`, 
+                            height: `${Math.max(1, 2 * scale)}px` 
+                        }} 
+                    />
                 ))}
             </div>
 
