@@ -12,6 +12,9 @@ export const useGaugeStore = create(
       gauges: [],
       settings: {
         publicFullscreen: false,
+        minDb: 40,
+        maxDb: 110,
+        pageTitle: ''
       },
       
       // Actions

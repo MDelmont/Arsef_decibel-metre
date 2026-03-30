@@ -214,7 +214,10 @@ export function useAudioProcessor() {
   
   // Calculate percentage for visual gauge
   const getGaugePercentage = () => {
-    let percentage = ((currentDb - MIN_GAUGE_DB) / (MAX_GAUGE_DB - MIN_GAUGE_DB)) * 100;
+    const { minDb, maxDb } = useGaugeStore.getState().settings;
+    const MIN = minDb || 40;
+    const MAX = maxDb || 110;
+    let percentage = ((currentDb - MIN) / (MAX - MIN)) * 100;
     return Math.min(100, Math.max(0, percentage));
   };
 

@@ -151,8 +151,8 @@ export default function DisplayPage() {
       <div className="z-10 w-full max-w-[95vw] flex flex-col items-center gap-16">
         {/* Title Header */}
         <div className="flex flex-col items-center gap-2">
-            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white/90 drop-shadow-sm">
-                Compteur de Performance
+            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white/90 drop-shadow-sm text-center px-4">
+                {settings.pageTitle || "Compteur de Performance"}
             </h1>
             <div className="h-1 w-32 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
         </div>
@@ -160,7 +160,13 @@ export default function DisplayPage() {
         {/* Gauges Row (Wrapping) */}
         <div className="flex flex-wrap justify-center items-start gap-x-12 gap-y-16 w-full">
           {enabledGauges.map((gauge) => (
-            <PublicGaugeCard key={gauge.id} gauge={gauge} liveValue={liveValues[gauge.id]} />
+            <PublicGaugeCard 
+                key={gauge.id} 
+                gauge={gauge} 
+                liveValue={liveValues[gauge.id]} 
+                minDb={settings.minDb} 
+                maxDb={settings.maxDb} 
+            />
           ))}
 
           {enabledGauges.length === 0 && (
@@ -174,10 +180,10 @@ export default function DisplayPage() {
   );
 }
 
-function PublicGaugeCard({ gauge, liveValue }) {
-  // Constants for db range
-  const MIN_DB = 40;
-  const MAX_DB = 110;
+function PublicGaugeCard({ gauge, liveValue, minDb, maxDb }) {
+  // Use settings or fallbacks
+  const MIN_DB = minDb || 40;
+  const MAX_DB = maxDb || 110;
   
   // Only show live movement if the gauge is active
   const currentVal = gauge.isActive ? (liveValue !== undefined ? liveValue : gauge.currentValue) : 0;
@@ -186,8 +192,10 @@ function PublicGaugeCard({ gauge, liveValue }) {
 
   // Determine color based on intensity for the Max DB text
   const getIntensityColor = (val) => {
-    if (val < 60) return "text-green-400";
-    if (val < 85) return "text-yellow-400";
+    const range = MAX_DB - MIN_DB;
+    const p = (val - MIN_DB) / range;
+    if (p < 0.3) return "text-green-400";
+    if (p < 0.75) return "text-yellow-400";
     return "text-red-500";
   };
   
@@ -218,23 +226,23 @@ function PublicGaugeCard({ gauge, liveValue }) {
           )}
 
           <div className={cn(
-              "w-28 h-[420px] rounded-2xl bg-black/40 border-2 overflow-hidden flex items-end shadow-2xl transition-all duration-500",
+              "w-28 h-[420px] rounded-2xl bg-black/40 border-2 overflow-hidden flex items-end shadow-2xl transition-all duration-500 relative",
               gauge.isActive ? "border-white/80 shadow-primary/10" : "border-white/60"
           )}>
-              {/* Liquid Level */}
+              {/* Liquid Level (Clipping Mask) */}
               <div 
-                className={cn(
-                    "w-full transition-all duration-75 ease-out rounded-b-lg relative",
-                    currentVal > 0 ? "bg-gradient-to-t from-green-500 via-yellow-400 to-red-500" : "bg-transparent"
-                )}
+                className="w-full transition-all duration-75 ease-out rounded-b-lg relative overflow-hidden"
                 style={{ height: `${safePercentage}%` }}
               >
-                {/* Glow on top of liquid */}
-                {currentVal > 0 && <div className="absolute top-0 left-0 right-0 h-2 bg-white/80 blur-[2px]" />}
+                {/* The actual gradient (Absolute Positioned at the bottom of the gauge) */}
+                <div className="absolute bottom-0 left-0 w-full h-[420px] bg-gradient-to-t from-green-500 via-yellow-400 to-red-500 shadow-[inset_0_0_20px_rgba(0,0,0,0.3)]">
+                    {/* Glow on top of liquid */}
+                    {currentVal > 0 && <div className="absolute top-0 left-0 right-0 h-2 bg-white/100 blur-[2px] z-10" />}
+                </div>
                 
                 {/* Internal Current Value Overlay (Small) */}
                 {gauge.isActive && currentVal > 0 && (
-                    <div className="absolute top-2 left-0 right-0 text-center font-bold text-xs text-white/100 mix-blend-overlay">
+                    <div className="absolute top-2 left-0 right-0 text-center font-bold text-xs text-white/100 mix-blend-overlay z-20">
                         {currentVal}
                     </div>
                 )}
