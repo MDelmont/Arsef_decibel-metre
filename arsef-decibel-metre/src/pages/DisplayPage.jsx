@@ -85,6 +85,8 @@ export default function DisplayPage() {
 
 const PublicGaugeCard = React.memo(({ gauge, settings }) => {
   const liquidRef = useRef(null);
+  const peakLiquidRef = useRef(null);
+  const peakValueRef = useRef(0);
   const valueTextRef = useRef(null);
   const syncTimeoutRef = useRef(null);
 
@@ -109,6 +111,15 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
                 liquidRef.current.style.opacity = p > 0 ? '1' : '0.001';
             }
 
+            // 1b. Direct DOM update for peak-hold
+            if (p > peakValueRef.current) {
+                peakValueRef.current = p;
+                if (peakLiquidRef.current) {
+                    peakLiquidRef.current.style.height = `${p}%`;
+                    peakLiquidRef.current.style.opacity = p > 0 ? '1' : '0';
+                }
+            }
+
             // 2. Direct DOM update for text
             if (valueTextRef.current) {
                 valueTextRef.current.textContent = Math.round(val) || "";
@@ -127,6 +138,17 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
     };
     return listenGaugeUpdate(handleUpdate);
   }, [gauge.id, settings.minDb, settings.maxDb]);
+
+  // Handle manual peak reset
+  useEffect(() => {
+    if (gauge.maxValue === 0) {
+        peakValueRef.current = 0;
+        if (peakLiquidRef.current) {
+            peakLiquidRef.current.style.height = '0%';
+            peakLiquidRef.current.style.opacity = '0';
+        }
+    }
+  }, [gauge.maxValue]);
 
   const getIntensityColor = (val) => {
     const min = settings.minDb || 40;
@@ -152,10 +174,22 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
             className={cn("w-full border-4 rounded-3xl relative overflow-hidden flex items-end shadow-2xl transition-all duration-500 bg-black/40", gauge.isActive ? "border-white/100 scale-[1.02]" : "border-white/60")}
             style={{ height: `${420 * scale}px` }}
         >
+            {/* Peak Level (Sub-gauge) - Pale version */}
+            <div 
+                ref={peakLiquidRef}
+                className="absolute left-0 right-0 bottom-0 overflow-hidden rounded-b-xl" 
+                style={{ 
+                    height: '0%', 
+                    opacity: 0,
+                    background: `linear-gradient(to top, #22c55e, #facc15, #ef4444) bottom / 100% ${420 * scale}px no-repeat`,
+                    filter: 'saturate(0.4) brightness(0.5)'
+                }}
+            />
+
             {/* Liquid Level - Simplified background-based gradient to fix all edge-bleed artifacts */}
             <div 
                 ref={liquidRef}
-                className="w-full relative overflow-hidden rounded-b-xl" 
+                className="w-full relative overflow-hidden rounded-b-xl z-10" 
                 style={{ 
                     height: '0%', 
                     opacity: 0,
