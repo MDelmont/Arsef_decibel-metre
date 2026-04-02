@@ -14,6 +14,14 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Slider } from '../components/ui/slider';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../components/ui/dialog';
 import { openDisplayWindow, toggleDisplayFullscreen, isTauri, quitApp } from '../lib/windowUtils';
 import { Info } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -33,6 +41,10 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState(true);
   const activeTimerRef = useRef(null);
+  
+  // Tracking saturation alerts
+  const [dismissedMics, setDismissedMics] = useState([]);
+  const [showSaturatingAlert, setShowSaturatingAlert] = useState(false);
 
   const {
     isListening,
@@ -55,6 +67,14 @@ export default function AdminPage() {
     const isDarkMode = document.documentElement.classList.contains('dark');
     setIsDark(isDarkMode);
   }, []);
+
+  // Show saturation alert only once per microphone
+  useEffect(() => {
+    if (isClipping && selectedMicId && !dismissedMics.includes(selectedMicId)) {
+        setShowSaturatingAlert(true);
+        setDismissedMics(prev => [...prev, selectedMicId]);
+    }
+  }, [isClipping, selectedMicId, dismissedMics]);
 
   const toggleTheme = () => {
     const html = document.documentElement;
@@ -154,8 +174,8 @@ export default function AdminPage() {
   const displayMax = activeGauge ? activeGauge.maxValue : localMaxDb;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200 p-6">
-      <header className="flex items-center justify-between pb-6 mb-6 border-b border-border">
+    <div className="h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200 overflow-hidden">
+      <header className="flex items-center justify-between pb-6 px-6 pt-6 border-b border-border shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Administration - Applaudimètre</h1>
           <p className="text-muted-foreground">Paramètres et gestion des jauges.</p>
@@ -214,7 +234,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 outline-none">
+      <main className="flex-1 overflow-y-auto px-6 pb-6 pt-6 grid grid-cols-1 lg:grid-cols-2 gap-8 outline-none border-t border-border/10">
         <div className="space-y-6">
            <div className="flex items-center justify-between border-b border-border pb-2">
                <h2 className="text-xl font-semibold">Création de jauge</h2>
@@ -408,10 +428,16 @@ export default function AdminPage() {
 
            {/* Section 2: Gestion du son */}
            <div className="space-y-3">
-               <div className="flex items-center justify-between border-b border-border pb-1">
-                   <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Captation Audio</h2>
-                   <div className={cn("w-3 h-3 rounded-full border border-border", isClipping ? "bg-red-500 shadow-[0_0_10px_red]" : "bg-muted")} />
-               </div>
+                <div className="flex items-center justify-between border-b border-border pb-1">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Captation Audio</h2>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Saturation</span>
+                            <div className={cn("w-2.5 h-2.5 rounded-full border border-border transition-all duration-300", isClipping ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] border-red-400" : "bg-muted")} />
+                            <InfoTooltip text="Éviter la saturation : Barre de recherche Windows > taper 'Paramètres' > Système > Son > Entrée > Régler le volume (baisser)." />
+                        </div>
+                    </div>
+                </div>
 
                <div className="space-y-3">
                    <Button variant={isListening ? "destructive" : "default"} className="w-full font-bold h-9 text-xs" onClick={() => isListening ? stopListening() : startListening()}>
@@ -432,7 +458,10 @@ export default function AdminPage() {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lissage</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center">
+                                Lissage
+                                <InfoTooltip text="Règle la réactivité de la jauge. Un lissage plus élevé (ex: 1.0) est plus stable, un lissage faible (ex: 0.2) est plus nerveux." />
+                            </label>
                             <Slider min={0.1} max={1.5} step={0.1} value={[ballistic]} onValueChange={(val) => setBallistic(val[0])} className="pt-2" />
                         </div>
                    </div>
@@ -450,7 +479,10 @@ export default function AdminPage() {
                    
                    <div className="bg-muted/30 p-2 rounded-lg border border-border/50">
                        <div className="flex justify-between items-center mb-1">
-                           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Calibration</label>
+                           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center">
+                               Calibration
+                               <InfoTooltip text="Ajustement global du niveau (offset) pour aligner la mesure avec un appareil de référence." />
+                           </label>
                            <div className="px-1.5 py-0.5 bg-background border border-border rounded text-[10px] font-mono font-bold tracking-tighter">
                              {calibrationOffset > 0 ? '+' : ''}{calibrationOffset} dB
                            </div>
@@ -513,6 +545,34 @@ export default function AdminPage() {
                 <Button variant="outline" size="sm" className="h-6 text-[9px] uppercase font-bold px-3" onClick={resetLocalMaxDb}>Reset</Button>
             </div>
          </div>       </main>
+
+       {/* Alerte de Saturation */}
+       <Dialog open={showSaturatingAlert} onOpenChange={setShowSaturatingAlert}>
+         <DialogContent className="sm:max-w-[425px]">
+           <DialogHeader>
+             <DialogTitle className="flex items-center gap-2 text-red-500">
+               <Activity className="h-5 w-5" />
+               Attention : Micro en saturation
+             </DialogTitle>
+             <DialogDescription className="pt-4 space-y-4 text-foreground/90">
+               <p>Le microphone sélectionné capte un signal trop fort, ce qui fausse les mesures.</p>
+               
+               <div className="bg-muted/50 p-4 rounded-lg border border-border text-sm space-y-3">
+                 <p className="font-bold border-b border-border pb-1 text-xs">Comment régler le volume dans Windows :</p>
+                 <ol className="list-decimal list-inside space-y-2 text-[11px] leading-relaxed">
+                   <li>Dans la <strong>Barre de recherche Windows</strong>, tapez <strong>'Paramètres'</strong>.</li>
+                   <li>Allez dans <strong>Système</strong>, puis dans <strong>Son</strong>.</li>
+                   <li>Faites défiler jusqu'à la section <strong>Entrée</strong>.</li>
+                   <li>Sélectionnez votre micro et <strong>réduisez le volume</strong> pour éviter que la jauge ne sature.</li>
+                 </ol>
+               </div>
+             </DialogDescription>
+           </DialogHeader>
+           <DialogFooter>
+             <Button onClick={() => setShowSaturatingAlert(false)}>J'ai compris</Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
     </div>
   );
 }
