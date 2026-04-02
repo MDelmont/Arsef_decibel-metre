@@ -237,10 +237,20 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
         {gauge.name && (
             <div 
                 className={cn(
-                    "mt-6 font-black uppercase italic tracking-widest text-center px-4 transition-all duration-500 break-all leading-tight w-full",
+                    "mt-6 font-black uppercase italic tracking-widest text-center transition-all duration-500 break-words hyphens-auto leading-tight",
                     gauge.isActive ? "text-primary scale-105" : "text-white/60"
                 )}
-                style={{ fontSize: `${1.25 * nameRatio * scale}rem` }}
+                style={{ 
+                    fontSize: `${1.25 * nameRatio * scale}rem`,
+                    hyphenateLimitChars: '6 3 3',
+                    WebkitHyphenateLimitChars: '6 3 3',
+                    // Dynamically adapt width: base (over the gauge) + gap space on each side
+                    width: `calc(100% + ${settings.gaugeGap/1.2}vw)`,
+                    marginLeft: `-${settings.gaugeGap / 2}vw`,
+                    marginRight: `-${settings.gaugeGap / 2}vw`,
+                    // Optimization: balance text and center
+                    textWrap: 'balance'
+                }}
             >
                 {gauge.name}
             </div>
