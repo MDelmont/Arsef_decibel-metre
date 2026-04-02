@@ -19,6 +19,7 @@ export const useGaugeStore = create(
         valueSize: 100,
         nameSize: 100,
         gaugeGap: 4,
+        showGauges: true,
       },
 
       // ── Settings ─────────────────────────────────────────────
@@ -127,8 +128,9 @@ export const useGaugeStore = create(
     {
       name: 'gauge-store',
       partialize: (state) => ({
-        // currentValue and isActive are intentionally excluded from persistence
-        gauges: state.gauges.map((g) => ({ ...g, currentValue: 0, isActive: false })),
+        // currentValue is intentionally excluded from persistence (high-frequency)
+        // isActive is now included to allow sync between Admin and Public windows
+        gauges: state.gauges.map((g) => ({ ...g, currentValue: 0 })),
         settings: state.settings,
       }),
     }

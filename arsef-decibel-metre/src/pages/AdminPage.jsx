@@ -10,7 +10,7 @@ import { Switch } from '../components/ui/switch';
 import { 
   Monitor, Plus, Trash2, RotateCcw, Mic, MicOff, Settings, Activity, 
   Moon, Sun, MonitorPlay, Maximize, Minimize, LogOut, Download, Upload,
-  ChevronUp, ChevronDown
+  ChevronUp, ChevronDown, Eye, EyeOff
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Slider } from '../components/ui/slider';
@@ -197,6 +197,15 @@ export default function AdminPage() {
 
           <Button variant="outline" size="icon" onClick={handleExport} title="Exporter les paramètres">
             <Upload className="h-5 w-5" />
+          </Button>
+
+          <Button 
+            variant={settings.showGauges ? "outline" : "default"} 
+            size="icon" 
+            onClick={() => useGaugeStore.getState().setSettings({ ...settings, showGauges: !settings.showGauges })} 
+            title={settings.showGauges ? "Masquer l'écran public" : "Afficher la page public"}
+          >
+            {settings.showGauges ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
           </Button>
 
           <Button variant="destructive" size="icon" onClick={handleQuit}>

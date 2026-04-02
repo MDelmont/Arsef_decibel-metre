@@ -63,7 +63,10 @@ export default function DisplayPage() {
 
       <div className="z-10 w-full max-w-[95vw] flex flex-col items-center gap-12">
         {/* Title Header */}
-        <div className="flex flex-col items-center gap-2 transition-all duration-500">
+        <div className={cn(
+            "flex flex-col items-center gap-2 transition-all duration-500",
+            settings.showGauges ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+        )}>
             <h1 
                 className="font-black italic tracking-tighter uppercase text-white/100 drop-shadow-sm text-center px-4"
                 style={{ fontSize: `${3 * titleScale}rem`, lineHeight: 1 }}
@@ -75,15 +78,21 @@ export default function DisplayPage() {
 
         {/* Gauges Row */}
         <div 
-          className="flex flex-wrap justify-center items-start w-full"
+          className={cn(
+            "flex flex-wrap justify-center items-start w-full transition-all duration-700 ease-in-out",
+            settings.showGauges ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+          )}
           style={{ 
             columnGap: `${settings.gaugeGap}vw`, 
             rowGap: '4rem' 
           }}
         >
-          {enabledGauges.map((gauge) => (
-            <PublicGaugeCard key={gauge.id} gauge={gauge} settings={settings} />
-          ))}
+          {(() => {
+            const anyActive = enabledGauges.some(g => g.isActive);
+            return enabledGauges.map((gauge) => (
+              <PublicGaugeCard key={gauge.id} gauge={gauge} settings={settings} anyActive={anyActive} />
+            ));
+          })()}
           {enabledGauges.length === 0 && <p className="text-muted-foreground text-xl">Aucune jauge active...</p>}
         </div>
       </div>
@@ -91,7 +100,7 @@ export default function DisplayPage() {
   );
 }
 
-const PublicGaugeCard = React.memo(({ gauge, settings }) => {
+const PublicGaugeCard = React.memo(({ gauge, settings, anyActive }) => {
   const liquidRef = useRef(null);
   const peakLiquidRef = useRef(null);
   const peakValueRef = useRef(0);
@@ -168,10 +177,18 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
   };
 
   return (
-    <div className={cn("flex flex-col items-center transition-all duration-500", !gauge.isEnabled && "opacity-20")} style={{ width: `${180 * scale}px` }}>
+    <div 
+        className={cn(
+            "flex flex-col items-center transition-all duration-700 ease-in-out", 
+            !gauge.isEnabled && "opacity-20",
+            anyActive && !gauge.isActive && "opacity-40 scale-[0.92] blur-[0.5px]",
+            gauge.isActive && "opacity-100 scale-[1.08] drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+        )} 
+        style={{ width: `${180 * scale}px` }}
+    >
         {/* Peak dB Value */}
         <div 
-            className={cn("font-black tabular-nums tracking-tighter drop-shadow-md mb-2", gauge.isActive ? getIntensityColor(gauge.maxValue) : "text-white/60")}
+            className={cn("font-black tabular-nums tracking-tighter drop-shadow-md mb-2", gauge.isActive ? getIntensityColor(gauge.maxValue) : (anyActive ? "text-white/20" : "text-white/60"))}
             style={{ fontSize: `${2.25 * maxDbRatio * scale}rem`, lineHeight: 1 }}
         >
             {gauge.maxValue > 0 ? gauge.maxValue : "--"}
@@ -179,7 +196,10 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
 
         {/* Gauge Container */}
         <div 
-            className={cn("w-full border-4 rounded-3xl relative overflow-hidden flex items-end shadow-2xl transition-all duration-500 bg-black/40", gauge.isActive ? "border-white/100 scale-[1.02]" : "border-white/60")}
+            className={cn(
+                "w-full border-4 rounded-3xl relative overflow-hidden flex items-end shadow-2xl transition-all duration-700 bg-black/40", 
+                gauge.isActive ? "border-white/100" : (anyActive ? "border-white/10" : "border-white/60")
+            )}
             style={{ height: `${420 * scale}px` }}
         >
             {/* Peak Level (Sub-gauge) - Pale version */}
@@ -238,7 +258,7 @@ const PublicGaugeCard = React.memo(({ gauge, settings }) => {
             <div 
                 className={cn(
                     "mt-6 font-black uppercase italic tracking-widest text-center transition-all duration-500 break-words hyphens-auto leading-tight",
-                    gauge.isActive ? "text-primary scale-105" : "text-white/60"
+                    gauge.isActive ? "text-white scale-105" : (anyActive ? "text-white/20" : "text-white/60")
                 )}
                 style={{ 
                     fontSize: `${1.25 * nameRatio * scale}rem`,
