@@ -26,13 +26,28 @@ import { openDisplayWindow, toggleDisplayFullscreen, isTauri, quitApp } from '..
 import { Info } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-const InfoTooltip = ({ text }) => (
-  <span className="group relative inline-block ml-1.5 cursor-help align-middle">
+const InfoTooltip = ({ text, align = 'center' }) => (
+  <span className="group relative inline-block ml-1.5 cursor-help align-middle shrink-0">
     <Info className="h-4 w-4 text-muted-foreground/60 hover:text-primary transition-colors" />
-    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 w-56 bg-popover text-popover-foreground text-[11px] font-normal rounded-lg border border-border shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 leading-normal normal-case tracking-normal">
+    <span className={cn(
+      "absolute bottom-full mb-2 p-2 w-56 bg-popover text-popover-foreground text-[11px] font-normal rounded-lg border border-border shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 leading-normal normal-case tracking-normal",
+      align === 'center' && "left-1/2 -translate-x-1/2",
+      align === 'right' && "right-[-10px]",
+      align === 'left' && "left-[-10px]"
+    )}>
       {text}
-      <span className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-border" />
-      <span className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-popover translate-y-[-1px]" />
+      <span className={cn(
+        "absolute top-full border-[6px] border-transparent border-t-border",
+        align === 'center' && "left-1/2 -translate-x-1/2",
+        align === 'right' && "right-3",
+        align === 'left' && "left-3"
+      )} />
+      <span className={cn(
+        "absolute top-full border-[5px] border-transparent border-t-popover translate-y-[-1px]",
+        align === 'center' && "left-1/2 -translate-x-1/2",
+        align === 'right' && "right-[13px]",
+        align === 'left' && "left-[13px]"
+      )} />
     </span>
   </span>
 );
@@ -174,8 +189,8 @@ export default function AdminPage() {
   const displayMax = activeGauge ? activeGauge.maxValue : localMaxDb;
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200 overflow-hidden">
-      <header className="flex items-center justify-between pb-6 px-6 pt-6 border-b border-border shrink-0">
+    <div className="fixed inset-0 bg-background text-foreground flex flex-col font-sans transition-colors duration-200 overflow-hidden">
+      <header className="flex items-center justify-between py-4 px-6 border-b border-border shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Administration - Applaudimètre</h1>
           <p className="text-muted-foreground">Paramètres et gestion des jauges.</p>
@@ -234,7 +249,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-6 pb-6 pt-6 grid grid-cols-1 lg:grid-cols-2 gap-8 outline-none border-t border-border/10">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 outline-none border-t border-border/10">
         <div className="space-y-6">
            <div className="flex items-center justify-between border-b border-border pb-2">
                <h2 className="text-xl font-semibold">Création de jauge</h2>
@@ -433,8 +448,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Saturation</span>
-                            <div className={cn("w-2.5 h-2.5 rounded-full border border-border transition-all duration-300", isClipping ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] border-red-400" : "bg-muted")} />
-                            <InfoTooltip text="Éviter la saturation : Barre de recherche Windows > taper 'Paramètres' > Système > Son > Entrée > Régler le volume (baisser)." />
+                            <div className={cn("w-2.5 h-2.5 rounded-full border border-border transition-all duration-300 shrink-0", isClipping ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] border-red-400" : "bg-muted")} />
+                            <InfoTooltip align="right" text="Éviter la saturation : Barre de recherche Windows > taper 'Paramètres' > Système > Son > Entrée > Régler le volume (baisser)." />
                         </div>
                     </div>
                 </div>
