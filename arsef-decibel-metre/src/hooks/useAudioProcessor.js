@@ -174,7 +174,17 @@ export function useAudioProcessor() {
         }
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream;
+      try {
+        console.log("Tentative d'accès micro avec contraintes RAW...", constraints);
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        console.warn("Échec du mode RAW, tentative en mode standard...", e);
+        // Fallback: Contraintes minimales si le mode RAW ou le deviceId exact échoue
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: targetDeviceId ? { deviceId: targetDeviceId } : true 
+        });
+      }
       streamRef.current = stream;
       
       setupAudioNodes(stream);
@@ -193,8 +203,11 @@ export function useAudioProcessor() {
       }
 
     } catch (err) {
-      console.error('Erreur :', err);
-      alert('Impossible d\'accéder au microphone en mode RAW. Vérifiez les permissions.');
+      console.error('Erreur accès micro:', err);
+      const errorMsg = err.name === 'NotAllowedError' 
+        ? "Accès refusé par le système. Vérifiez les paramètres de confidentialité de Windows."
+        : `Détails : ${err.message || err.name}`;
+      alert(`Impossible d'accéder au microphone.\n${errorMsg}`);
     }
   };
 

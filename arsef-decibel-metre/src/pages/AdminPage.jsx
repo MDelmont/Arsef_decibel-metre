@@ -7,10 +7,14 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Switch } from '../components/ui/switch';
-import { Monitor, Plus, Trash2, RotateCcw, Mic, MicOff, Settings, Activity, Moon, Sun, MonitorPlay, Maximize, Minimize, LogOut } from 'lucide-react';
+import { 
+  Monitor, Plus, Trash2, RotateCcw, Mic, MicOff, Settings, Activity, 
+  Moon, Sun, MonitorPlay, Maximize, Minimize, LogOut, Download, Upload,
+  ChevronUp, ChevronDown
+} from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Slider } from '../components/ui/slider';
-import { openDisplayWindow, toggleDisplayFullscreen, isTauri } from '../lib/windowUtils';
+import { openDisplayWindow, toggleDisplayFullscreen, isTauri, quitApp } from '../lib/windowUtils';
 import { Info } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -64,18 +68,57 @@ export default function AdminPage() {
   };
 
   const handleQuit = async () => {
-    try {
-      const appWindow = getCurrentWindow();
-      await appWindow.close();
-    } catch (e) {
-      window.close();
-    }
+    await quitApp();
   };
 
   const [newGaugeName, setNewGaugeName] = useState('');
   const [newGaugeTime, setNewGaugeTime] = useState('');
   
-  const { gauges, addGauge, resetGauge, deleteGauge, toggleEnable, setActiveGauge, settings, setPublicFullscreen } = useGaugeStore();
+  const { 
+    gauges, addGauge, resetGauge, deleteGauge, toggleEnable, 
+    setActiveGauge, settings, setPublicFullscreen, 
+    exportSnapshot, importSnapshot, updateGauge, moveGauge 
+  } = useGaugeStore();
+
+  const handleExport = () => {
+    try {
+      const data = exportSnapshot();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const date = new Date().toISOString().split('T')[0];
+      anchor.href = url;
+      anchor.download = `applaudimetre-preset-${date}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed", error);
+      alert("Erreur lors de l'exportation.");
+    }
+  };
+
+  const fileInputRef = useRef(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      importSnapshot(payload);
+      alert("Importation réussie !");
+      // Reset input
+      e.target.value = '';
+    } catch (error) {
+      console.error("Import failed", error);
+      alert(`Erreur lors de l'importation : ${error.message}`);
+    }
+  };
 
   const handleAddGauge = (e) => {
     e.preventDefault();
@@ -97,8 +140,6 @@ export default function AdminPage() {
     if (gauge.isActive) {
         setActiveGauge(null);
     } else {
-        resetGauge(gauge.id);
-        resetLocalMaxDb(); 
         setActiveGauge(gauge.id);
         if (gauge.recordTime > 0) {
             activeTimerRef.current = setTimeout(() => {
@@ -116,7 +157,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200 p-6">
       <header className="flex items-center justify-between pb-6 mb-6 border-b border-border">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Administration - Arsef</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Administration - Applaudimètre</h1>
           <p className="text-muted-foreground">Paramètres et gestion des jauges.</p>
         </div>
         
@@ -141,6 +182,21 @@ export default function AdminPage() {
           <Button variant="default" onClick={() => openDisplayWindow()} className="font-semibold gap-2">
             <MonitorPlay className="h-5 w-5" />
             Affichage Public
+          </Button>
+
+          <Button variant="outline" size="icon" onClick={handleImportClick} title="Importer les paramètres">
+            <Download className="h-5 w-5" />
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".json" 
+              onChange={handleImportFile} 
+            />
+          </Button>
+
+          <Button variant="outline" size="icon" onClick={handleExport} title="Exporter les paramètres">
+            <Upload className="h-5 w-5" />
           </Button>
 
           <Button variant="destructive" size="icon" onClick={handleQuit}>
@@ -180,34 +236,98 @@ export default function AdminPage() {
            <div className="border border-border rounded-md overflow-hidden bg-card">
               <table className="w-full text-sm text-left">
                 <thead className="bg-muted/50 text-muted-foreground border-b border-border">
-                  <tr>
+                   <tr>
+                    <th className="px-2 py-3 w-10"></th>
                     <th className="px-4 py-3 font-medium">Nom</th>
-                    <th className="px-4 py-3 font-medium text-center">Durée</th>
-                    <th className="px-4 py-3 font-medium text-center">Db Max</th>
+                    <th className="px-4 py-3 font-medium text-center w-24">Durée</th>
+                    <th className="px-4 py-3 font-medium text-center w-24 text-nowrap">Db Max</th>
                     <th className="px-4 py-3 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {gauges.length === 0 ? (
-                    <tr><td colSpan="4" className="px-4 py-8 text-center text-muted-foreground">Aucune jauge.</td></tr>
+                    <tr><td colSpan="5" className="px-4 py-8 text-center text-muted-foreground">Aucune jauge.</td></tr>
                   ) : (
-                    gauges.map((gauge) => (
-                      <tr key={gauge.id} className="transition-colors hover:bg-muted/30">
-                        <td className={cn("px-4 py-3 font-medium", !gauge.isEnabled && "opacity-50 text-muted-foreground")}>
-                          {gauge.name || `Jauge ${gauges.indexOf(gauge) + 1}`}
+                    gauges.map((gauge, index) => (
+                      <tr key={gauge.id} className="transition-colors hover:bg-muted/30 group">
+                        <td className="px-2 py-3">
+                          <div className="flex flex-col items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              disabled={index === 0} 
+                              onClick={() => moveGauge(gauge.id, 'up')}
+                              className="text-muted-foreground hover:text-primary disabled:opacity-20"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button 
+                              disabled={index === gauges.length - 1} 
+                              onClick={() => moveGauge(gauge.id, 'down')}
+                              className="text-muted-foreground hover:text-primary disabled:opacity-20"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-center">{gauge.recordTime > 0 ? `${gauge.recordTime}s` : '∞'}</td>
+                        <td className={cn("px-4 py-2 font-medium", !gauge.isEnabled && "opacity-50 text-muted-foreground")}>
+                          <Input 
+                            value={gauge.name} 
+                            onChange={(e) => updateGauge(gauge.id, { name: e.target.value })}
+                            placeholder={`Jauge ${index + 1}`}
+                            className="bg-transparent border-transparent hover:border-border focus:bg-background h-8 px-2 -ml-2"
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Input 
+                              type="number"
+                              value={gauge.recordTime || ''} 
+                              onChange={(e) => updateGauge(gauge.id, { recordTime: parseInt(e.target.value) || 0 })}
+                              placeholder="∞"
+                              className="bg-transparent border-transparent hover:border-border focus:bg-background h-8 w-16 text-center px-1"
+                            />
+                            <span className="text-[10px] text-muted-foreground">s</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-center font-bold">{gauge.maxValue || '-'}</td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <Button variant={gauge.isActive ? "default" : "outline"} size="sm" className={cn("h-8", gauge.isActive && "bg-green-600 text-white")} onClick={() => handleToggleListen(gauge)}>
+                          <div className="flex gap-1.5 whitespace-nowrap">
+                            <Button 
+                              variant={gauge.isActive ? "default" : "outline"} 
+                              size="sm" 
+                              className={cn("h-8 min-w-[95px] text-xs font-bold", gauge.isActive && "bg-green-600 text-white")} 
+                              onClick={() => handleToggleListen(gauge)}
+                            >
                               {gauge.isActive ? "En écoute" : "Écouter"}
                             </Button>
-                            <Button variant="outline" size="sm" className="h-8" onClick={() => toggleEnable(gauge.id)}>
+                            
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 text-xs min-w-[80px]" 
+                              onClick={() => toggleEnable(gauge.id)}
+                            >
                               {gauge.isEnabled ? "Désactiver" : "Activer"}
                             </Button>
-                            <Button variant="outline" size="sm" className="h-8" onClick={() => resetGauge(gauge.id)}><RotateCcw className="h-4 w-4" /></Button>
-                            <Button variant="destructive" size="sm" className="h-8" onClick={() => deleteGauge(gauge.id)}><Trash2 className="h-4 w-4" /></Button>
+
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 px-2" 
+                              onClick={() => resetGauge(gauge.id)} 
+                              title="Remise à zéro"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="h-8 px-2" 
+                              onClick={() => deleteGauge(gauge.id)} 
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </td>
                       </tr>

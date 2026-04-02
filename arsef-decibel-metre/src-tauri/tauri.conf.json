@@ -1,25 +1,26 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "arsef-decibel-metre",
+  "productName": "Applaudimètre",
   "version": "0.1.0",
-  "identifier": "com.matth.arsef-decibel-metre",
+  "identifier": "com.matth.applaudimetre",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:5173",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "arsef-decibel-metre",
+        "title": "Applaudimètre",
         "width": 800,
         "height": 600
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,

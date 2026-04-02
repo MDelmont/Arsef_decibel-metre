@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Gauges format: { id: string, name: string, maxValue: number, isEnabled: boolean, isActive: boolean (local only) }
-// Note: isActive (which microphone is listening) is local to Admin so we don't necessarily sync it, but
-// we do sync it so Display knows which one to highlight.
-// We'll manage syncing manually via localStorage polling.
+// Gauges format: { id, name, maxValue, isEnabled, isActive, currentValue, recordTime }
+// isActive and currentValue are NEVER persisted — they reset to defaults on app start.
 
 export const useGaugeStore = create(
   persist(
@@ -20,71 +18,119 @@ export const useGaugeStore = create(
         maxDbSize: 100,
         valueSize: 100,
         nameSize: 100,
-        gaugeGap: 4
+        gaugeGap: 4,
       },
-      
-      // Actions
-      setPublicFullscreen: (val) => set((state) => ({
-        settings: { ...state.settings, publicFullscreen: val }
-      })),
-      
+
+      // ── Settings ─────────────────────────────────────────────
+      setPublicFullscreen: (val) =>
+        set((state) => ({ settings: { ...state.settings, publicFullscreen: val } })),
+
       setSettings: (settings) => set({ settings }),
-      
-      addGauge: (name, recordTime = 0) => set((state) => {
-        const newGauge = {
-          id: crypto.randomUUID(),
-          name,
-          recordTime,
-          currentValue: 0, // Not synced (real-time visual only)
-          maxValue: 0,
-          isEnabled: true,
-          isActive: false
+
+      // ── Gauge CRUD ────────────────────────────────────────────
+      addGauge: (name, recordTime = 0) =>
+        set((state) => ({
+          gauges: [
+            ...state.gauges,
+            {
+              id: crypto.randomUUID(),
+              name,
+              recordTime,
+              currentValue: 0,
+              maxValue: 0,
+              isEnabled: true,
+              isActive: false,
+            },
+          ],
+        })),
+
+      updateGaugeValue: (id, value) =>
+        set((state) => ({
+          gauges: state.gauges.map((g) => {
+            if (g.id !== id) return g;
+            return { ...g, currentValue: value, maxValue: Math.max(g.maxValue, value) };
+          }),
+        })),
+
+      resetGauge: (id) =>
+        set((state) => ({
+          gauges: state.gauges.map((g) =>
+            g.id === id ? { ...g, maxValue: 0, currentValue: 0 } : g
+          ),
+        })),
+
+      deleteGauge: (id) =>
+        set((state) => ({ gauges: state.gauges.filter((g) => g.id !== id) })),
+
+      updateGauge: (id, updates) =>
+        set((state) => ({
+          gauges: state.gauges.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+        })),
+
+      moveGauge: (id, direction) =>
+        set((state) => {
+          const index = state.gauges.findIndex((g) => g.id === id);
+          if (index === -1) return state;
+          const newIndex = direction === 'up' ? index - 1 : index + 1;
+          if (newIndex < 0 || newIndex >= state.gauges.length) return state;
+          const nextGauges = [...state.gauges];
+          const [moved] = nextGauges.splice(index, 1);
+          nextGauges.splice(newIndex, 0, moved);
+          return { gauges: nextGauges };
+        }),
+
+      toggleEnable: (id) =>
+        set((state) => ({
+          gauges: state.gauges.map((g) =>
+            g.id === id ? { ...g, isEnabled: !g.isEnabled } : g
+          ),
+        })),
+
+      // Only one gauge active at a time; pass null to deactivate all
+      setActiveGauge: (id) =>
+        set((state) => ({
+          gauges: state.gauges.map((g) => ({ ...g, isActive: g.id === id })),
+        })),
+
+      stopAll: () =>
+        set((state) => ({
+          gauges: state.gauges.map((g) => ({ ...g, isActive: false, currentValue: 0 })),
+        })),
+
+      // Used by DisplayPage to sync from localStorage
+      setGauges: (gauges) => set({ gauges }),
+
+      // ── Export / Import ───────────────────────────────────────
+      exportSnapshot: () => {
+        const { gauges, settings } = get();
+        return {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          gauges: gauges.map((g) => ({ ...g, isActive: false, currentValue: 0 })),
+          settings,
         };
-        return { gauges: [...state.gauges, newGauge] };
-      }),
-      
-      updateGaugeValue: (id, value) => set((state) => ({
-        gauges: state.gauges.map(g => {
-          if (g.id === id) {
-            const newMax = Math.max(g.maxValue, value);
-            return { ...g, currentValue: value, maxValue: newMax };
-          }
-          return g;
-        })
-      })),
+      },
 
-      resetGauge: (id) => set((state) => ({
-        gauges: state.gauges.map(g => g.id === id ? { ...g, maxValue: 0, currentValue: 0 } : g)
-      })),
-
-      deleteGauge: (id) => set((state) => ({
-        gauges: state.gauges.filter(g => g.id !== id)
-      })),
-
-      toggleEnable: (id) => set((state) => ({
-        gauges: state.gauges.map(g => g.id === id ? { ...g, isEnabled: !g.isEnabled } : g)
-      })),
-
-      setActiveGauge: (id) => set((state) => ({
-        // Only one gauge active at a time
-        gauges: state.gauges.map(g => ({ ...g, isActive: g.id === id }))
-      })),
-
-      stopAll: () => set((state) => ({
-        gauges: state.gauges.map(g => ({ ...g, isActive: false, currentValue: 0 }))
-      })),
-
-      // For syncing
-      setGauges: (gauges) => set({ gauges })
+      importSnapshot: (snapshot = {}) => {
+        const { gauges: nextGauges, settings: nextSettings } = snapshot;
+        set((state) => ({
+          gauges: Array.isArray(nextGauges)
+            ? nextGauges.map((g) => ({ ...g, isActive: false, currentValue: 0 }))
+            : state.gauges,
+          settings:
+            nextSettings && typeof nextSettings === 'object'
+              ? { ...state.settings, ...nextSettings }
+              : state.settings,
+        }));
+      },
     }),
     {
       name: 'gauge-store',
-      // We only want to persist certain fields ideally, but the whole array is fine for MVP.
-      // We could use `partialize` to exclude currentValue.
       partialize: (state) => ({
-        gauges: state.gauges.map(g => ({ ...g, currentValue: 0 })), // Don't persist live mic data
-        settings: state.settings
-      })
+        // currentValue and isActive are intentionally excluded from persistence
+        gauges: state.gauges.map((g) => ({ ...g, currentValue: 0, isActive: false })),
+        settings: state.settings,
+      }),
     }
   )
 );

@@ -45,10 +45,18 @@ export default function DisplayPage() {
       <div className="absolute inset-0 z-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       {showFullscreenPrompt && (
-        <div className="absolute inset-0 bg-black/80 grid place-items-center z-50 p-6 backdrop-blur-sm">
-          <div className="p-8 rounded-2xl bg-card border border-border text-card-foreground max-w-sm text-center space-y-6 shadow-2xl">
-            <h2 className="font-bold text-2xl tracking-tight">Plein écran requis</h2>
-            <button onClick={() => { document.documentElement.requestFullscreen(); setShowFullscreenPrompt(false); }} className="w-full bg-primary py-4 rounded-xl font-bold">Activer</button>
+        <div className="absolute inset-0 bg-black/90 grid place-items-center z-100 p-6 backdrop-blur-md">
+          <div className="p-10 rounded-3xl bg-zinc-900 border border-white/10 text-white max-w-sm text-center space-y-8 shadow-[0_0_100px_rgba(0,0,0,0.8)]">
+            <div className="space-y-3">
+              <h1 className="font-black text-4xl tracking-tighter uppercase italic leading-none">Plein écran</h1>
+              <p className="text-zinc-400 text-sm font-medium leading-relaxed">L'affichage public nécessite le mode plein écran pour une expérience optimale.</p>
+            </div>
+            <button 
+              onClick={() => { document.documentElement.requestFullscreen(); setShowFullscreenPrompt(false); }} 
+              className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-200 transition-all active:scale-95 shadow-xl hover:shadow-white/5"
+            >
+              Activer
+            </button>
           </div>
         </div>
       )}

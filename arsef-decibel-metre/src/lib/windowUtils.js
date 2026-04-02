@@ -73,12 +73,21 @@ export function listenGaugeUpdate(callback) {
 }
 
 /**
- * Loads the WebviewWindow class dynamically in Tauri
+ * Loads the WebviewWindow class dynamically in Tauri (v2 preferred)
  */
 async function getWebviewWindow() {
-    if (isTauri()) {
-        const { WebviewWindow, getAllWebviewWindows } = await import('@tauri-apps/api/webviewWindow');
-        return { WebviewWindow, getAllWebviewWindows };
+    if (!isTauri()) return null;
+    try {
+        const m = await import('@tauri-apps/api/webviewWindow');
+        return m;
+    } catch (e) {
+        console.error("Tauri v2 webviewWindow import failed:", e);
+        try {
+            const m = await import('@tauri-apps/api/window');
+            return m;
+        } catch (e2) {
+            console.error("Tauri v1 window import failed:", e2);
+        }
     }
     return null;
 }
@@ -92,19 +101,25 @@ export async function openDisplayWindow() {
 
   if (isTauri()) {
     try {
-      const { WebviewWindow, getAllWebviewWindows } = await getWebviewWindow();
-      const windows = await getAllWebviewWindows();
-      const existing = windows.find(w => w.label === windowLabel);
+      const tauri = await getWebviewWindow();
+      if (!tauri) throw new Error("Tauri API not found");
+      
+      const { WebviewWindow } = tauri;
+      
+      // Use getByLabel if available (Tauri v2)
+      const existing = WebviewWindow.getByLabel 
+        ? await WebviewWindow.getByLabel(windowLabel) 
+        : null;
 
       if (existing) {
         await existing.setFocus();
         return existing;
       }
 
-      // Create a new Tauri v2 WebviewWindow with the specific label
+      // Create a new Tauri WebviewWindow
       const webview = new WebviewWindow(windowLabel, {
         url: displayUrl,
-        title: "Arsef - Affichage Public",
+        title: "Applaudimètre - Affichage Public",
         width: 1280,
         height: 720,
         resizable: true,
@@ -112,7 +127,7 @@ export async function openDisplayWindow() {
 
       return webview;
     } catch (e) {
-      console.error("Failed to open Tauri window", e);
+      console.error("Failed to open Tauri window:", e);
     }
   }
 
@@ -133,9 +148,13 @@ export async function toggleDisplayFullscreen(forceState) {
 
   if (isTauri()) {
     try {
-      const { getAllWebviewWindows } = await getWebviewWindow();
-      const windows = await getAllWebviewWindows();
-      const target = windows.find(w => w.label === windowLabel);
+      const tauri = await getWebviewWindow();
+      if (!tauri) return;
+      
+      const { WebviewWindow } = tauri;
+      const target = WebviewWindow.getByLabel 
+        ? await WebviewWindow.getByLabel(windowLabel) 
+        : null;
       
       if (target) {
         const isFullscreen = forceState !== undefined ? !forceState : await target.isFullscreen();
@@ -154,4 +173,32 @@ export async function toggleDisplayFullscreen(forceState) {
     win.postMessage({ type: "TOGGLE_FULLSCREEN", state: forceState }, window.location.origin);
     win.focus();
   }
+}
+
+/**
+ * Quits the application and closes all windows
+ */
+export async function quitApp() {
+  if (isTauri()) {
+    try {
+      const tauri = await getWebviewWindow();
+      if (tauri && tauri.getAllWebviewWindows) {
+        const windows = await tauri.getAllWebviewWindows();
+        if (Array.isArray(windows)) {
+          for (const win of windows) {
+             await win.close();
+          }
+          return;
+        }
+      }
+      // Fallback for current window
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().close();
+    } catch (e) {
+      console.error("Tauri quitApp failed:", e);
+    }
+  }
+
+  // Browser fallback
+  window.close();
 }
